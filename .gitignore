@@ -1,0 +1,45 @@
+# ---- Data (sensitive: CounselBench expert annotations — never commit) ----
+data/
+data.zip
+*.jsonl
+
+# ---- Model outputs / results containing data excerpts ----
+final_results.json
+eval_offline_results.json
+judge_sample.txt
+judge_verdicts.md
+
+# ---- Training logs ----
+*.out
+nohup.out
+slurm_*
+*_console*
+
+# ---- Model checkpoints (large binaries) ----
+rationale_critic_checkpoint/
+rationale_critic_llama_checkpoint/
+out_base_sigmoid/
+*.safetensors
+*.bin
+*.pt
+
+# ---- Papers / internal planning docs (copyright / not shareable) ----
+*.pdf
+*.docx
+
+# ---- Scratch ----
+新建 文本文档.txt
+*.tmp
+
+# ---- Python ----
+__pycache__/
+*.py[cod]
+.ipynb_checkpoints/
+.venv/
+venv/
+
+# ---- IDE / OS ----
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db

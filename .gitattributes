@@ -1,0 +1,4 @@
+# Force LF for files that run on the Linux GPU server
+*.sh text eol=lf
+*.py text eol=lf
+*.md text eol=lf
