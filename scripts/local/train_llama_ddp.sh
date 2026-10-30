@@ -11,6 +11,8 @@
 # Uses the ungated mirror so no gated-access wait. Swap to
 # meta-llama/Llama-3.1-8B-Instruct once your access request is approved.
 
+cd "$(dirname "$0")/../.."
+
 nohup torchrun --standalone --nproc_per_node=2 \
   train_critic.py \
   --base_model NousResearch/Meta-Llama-3.1-8B-Instruct \

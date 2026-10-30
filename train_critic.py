@@ -944,7 +944,8 @@ class QwenCritic(nn.Module):
                  span_classes: Optional[List[str]] = None,
                  device_index: int = 0, grad_checkpoint: bool = False,
                  attn_impl: str = "flash_attention_2",
-                 span_pos_weights: Optional[List[float]] = None):
+                 span_pos_weights: Optional[List[float]] = None,
+                 adapter_dir: Optional[str] = None):
         super().__init__()
         self.span_classes = span_classes or ["problem"]
         self.num_span_classes = len(self.span_classes)
@@ -982,7 +983,14 @@ class QwenCritic(nn.Module):
                             "gate_proj", "up_proj", "down_proj"],
             bias="none",
         )
-        self.backbone = get_peft_model(base, lora_config)
+        if adapter_dir is not None:
+            # Inference: attach a TRAINED adapter from a checkpoint instead of a
+            # fresh random one. lora_config above is unused in this path (the
+            # saved adapter_config.json carries r/alpha/dropout/target_modules).
+            from peft import PeftModel
+            self.backbone = PeftModel.from_pretrained(base, adapter_dir, is_trainable=False)
+        else:
+            self.backbone = get_peft_model(base, lora_config)
         self.backbone.print_trainable_parameters()
 
         hidden = self.backbone.config.hidden_size
@@ -1123,6 +1131,51 @@ def save_checkpoint(model: QwenCritic, tokenizer, output_dir: str, tag: str) -> 
                os.path.join(path, "heads.pt"))
     logger.info("Checkpoint saved to %s", path)
     return path
+
+
+def load_critic(checkpoint_dir: str, base_model_name: str, *,
+                typed: bool = True, torch_dtype: torch.dtype = torch.bfloat16,
+                device_index: int = 0, attn_impl: str = "flash_attention_2",
+                target_format: str = "structured"):
+    """Reconstruct a trained QwenCritic from a ``save_checkpoint()`` directory.
+
+    The directory holds the PEFT adapter (adapter_config.json + adapter weights),
+    the tokenizer, and ``heads.pt`` = {score_head, span_head}. Returns
+    ``(model, tokenizer)`` ready for ``model.predict(tokenizer, q, r, ...)``.
+
+    Inference-only: eval mode, no grad. Sets the module-level
+    ``ACTIVE_TARGET_FORMAT`` so ``build_prompt`` reproduces the exact task line
+    used at training time (default "structured"). Span class count is inferred
+    from the saved ``span_head`` width, so 3-way multi-label and 1-way binary
+    checkpoints both load.
+    """
+    from transformers import AutoTokenizer
+    global ACTIVE_TARGET_FORMAT
+    ACTIVE_TARGET_FORMAT = target_format
+
+    heads = torch.load(os.path.join(checkpoint_dir, "heads.pt"), map_location="cpu")
+    K = heads["span_head"]["weight"].shape[0]
+    span_classes, _ = span_label_scheme(typed=(K != 1))
+    if len(span_classes) != K:                      # scheme/width mismatch -> generic names
+        span_classes = [f"type{i}" for i in range(K)]
+
+    # lora_* args are placeholders here: adapter_dir makes __init__ load the
+    # trained adapter_config instead of building a fresh LoRA.
+    model = QwenCritic(base_model_name, lora_rank=32, lora_alpha=64, lora_dropout=0.05,
+                       torch_dtype=torch_dtype, span_classes=span_classes,
+                       device_index=device_index, grad_checkpoint=False,
+                       attn_impl=attn_impl, adapter_dir=checkpoint_dir)
+    device = next(model.backbone.parameters()).device
+    model.score_head.load_state_dict(heads["score_head"])
+    model.span_head.load_state_dict(heads["span_head"])
+    model.score_head.to(device=device, dtype=torch.float32)
+    model.span_head.to(device=device, dtype=torch.float32)
+    model.eval()
+
+    tokenizer = AutoTokenizer.from_pretrained(checkpoint_dir, use_fast=True)
+    if tokenizer.pad_token_id is None:
+        tokenizer.pad_token = tokenizer.eos_token
+    return model, tokenizer
 
 
 # -----------------------------------------------------------------------------

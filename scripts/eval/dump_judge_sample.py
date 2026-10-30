@@ -5,8 +5,8 @@ import json
 import random
 
 RUNS = {
-    "softmax": "final_results.json",
-    "sigmoid": "out_base_sigmoid/final_results.json",
+    "softmax": "artifacts/stage3/final_results.json",
+    "sigmoid": "artifacts/stage3/out_base_sigmoid/final_results.json",
 }
 N_SAMPLE = 20
 SEED = 42
@@ -30,7 +30,7 @@ for name, path in RUNS.items():
 
 idxs = sorted(random.Random(SEED).sample(range(len(test_rows)), N_SAMPLE))
 
-with open("judge_sample.txt", "w", encoding="utf-8") as out:
+with open("artifacts/judge/judge_sample.txt", "w", encoding="utf-8") as out:
     for i in idxs:
         row = test_rows[i]
         out.write("#" * 80 + "\n")
@@ -48,4 +48,4 @@ with open("judge_sample.txt", "w", encoding="utf-8") as out:
                       % (name, preds[name][i]["pred_scores"]["overall"]))
             out.write("  %s\n" % trunc(preds[name][i].get("pred_rationale"), 700))
         out.write("\n")
-print("Wrote judge_sample.txt with %d examples: %s" % (len(idxs), idxs))
+print("Wrote artifacts/judge/judge_sample.txt with %d examples: %s" % (len(idxs), idxs))

@@ -4,6 +4,8 @@
 # checkpointing (plenty of memory), FlashAttention-2 on. Set --gpu 1 to use the
 # second card instead (e.g. run a Llama job on gpu 0 and Qwen on gpu 1).
 
+cd "$(dirname "$0")/../.."
+
 nohup python train_critic.py \
   --base_model Qwen/Qwen2.5-7B-Instruct \
   --data_dir data \

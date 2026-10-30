@@ -1,7 +1,12 @@
 # ---- Data (sensitive: CounselBench expert annotations — never commit) ----
 data/
-data.zip
+*.zip
 *.jsonl
+
+# ---- Local working dirs (run results, logs, papers — kept local, never committed) ----
+results/
+logs/
+docs/
 
 # ---- Model outputs / results containing data excerpts ----
 final_results.json
@@ -43,3 +48,6 @@ venv/
 .vscode/
 .DS_Store
 Thumbs.db
+
+# ---- Historical outputs / judge results (contain data excerpts) ----
+artifacts/
